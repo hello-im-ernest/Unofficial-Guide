@@ -9,7 +9,7 @@
 
 ## Domain
 
-<!-- What domain did you choose? Why is this knowledge valuable and hard to find through official channels? -->
+The Unofficial St. Philip's College Survival Guide — real student knowledge about surviving and thriving at SPC that never appears in official handbooks or orientation packets. This includes honest professor reviews, financial aid tips, registration frustrations, campus safety concerns, and advice about programs like Alamo Promise. This knowledge is valuable because official sources give the marketing version; students need the real version.
 
 ---
 
@@ -35,88 +35,67 @@
 
 ## Chunking Strategy
 
-<!-- How will you split documents into chunks?
-     State your chunk size (in tokens or characters), overlap size, and explain why those
-     numbers fit the structure of your documents.
-     A review-heavy corpus warrants different chunking than a long FAQ. -->
+**Chunk size:** 300 characters
 
-**Chunk size:**
+**Overlap:** 50 characters
 
-**Overlap:**
-
-**Reasoning:**
+**Reasoning:** Most of our documents are short student reviews — 2 to 5 sentences expressing a single opinion or experience. A 300-character chunk is large enough to capture a complete thought (one full review or one key piece of advice) without merging unrelated opinions together. Overlap of 50 characters ensures that if a review spans a chunk boundary, the key advice isn't lost. Smaller chunks (like 100 characters) would fragment individual reviews into meaningless pieces; larger chunks (like 600 characters) would merge multiple unrelated student opinions into one chunk, making retrieval too broad to be useful.
 
 ---
 
 ## Retrieval Approach
 
-<!-- Which embedding model are you using (e.g., all-MiniLM-L6-v2 via sentence-transformers)?
-     How many chunks will you retrieve per query (top-k)?
-     If you were deploying this for real users and cost wasn't a constraint, what tradeoffs
-     would you weigh in choosing a different embedding model — context length, multilingual
-     support, accuracy on domain-specific text, latency? -->
+**Embedding model:** all-MiniLM-L6-v2 via sentence-transformers (runs locally, no API key needed)
 
-**Embedding model:**
+**Top-k:** 4
 
-**Top-k:**
-
-**Production tradeoff reflection:**
+**Production tradeoff reflection:** For a real deployment, I would consider OpenAI's text-embedding-3-small for higher accuracy on domain-specific text, but it costs money per API call and requires an internet connection. all-MiniLM-L6-v2 runs locally with no rate limits, which is ideal for a student project. If the guide needed to serve Spanish-speaking SPC students, I would switch to a multilingual model like paraphrase-multilingual-MiniLM-L12-v2. Top-k of 4 gives the LLM enough context to answer most questions without flooding it with loosely related chunks.
 
 ---
 
 ## Evaluation Plan
 
-<!-- List your 5 test questions with their expected correct answers.
-     Questions should be specific enough that you can judge whether the system's response
-     is right or wrong. "What are good dining halls?" is too vague.
-     "What do students say about wait times at [dining hall name] during lunch?" is testable. -->
-
 | # | Question | Expected answer |
 |---|----------|-----------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| 1 | What do students say about the registration process at St. Philip's College? | Students report the registration process is frustrating and the student portal is difficult to navigate. Multiple reviewers mention it is hard to reach a human for help. |
+| 2 | What is the Alamo Promise and who is eligible? | Alamo Promise covers tuition and mandatory fees for eligible students from Bexar County high schools who enroll in the fall immediately after graduation and complete FAFSA or TASFA. Transfer students are not eligible. |
+| 3 | What do students say about Professor McCall's class? | Students say Professor McCall's class is easy if you watch the videos and do the work on time. Assignments have videos to follow, there is extra credit, and the professor responds to emails quickly. |
+| 4 | Is St. Philip's College safe at night? | Some students report feeling unsafe at night due to homeless individuals near campus. Night classes are mentioned as a concern by multiple reviewers. |
+| 5 | What student services are available at St. Philip's College? | SPC offers advising, financial aid, tutoring, career services, and disability support services among others. Students note that advisor availability can be inconsistent. |
 
 ---
 
 ## Anticipated Challenges
 
-<!-- What could go wrong? Name at least two specific risks with reasoning.
-     Consider: noisy or inconsistent documents, missing source attribution, off-topic
-     retrieval, chunks that split key information across boundaries. -->
+1. **Review text is noisy and inconsistent** — Student reviews vary wildly in length, grammar, and specificity. Some reviews are one sentence ("great school!") while others are several paragraphs. Very short reviews may not embed meaningfully enough to match specific queries, producing weak retrieval results.
 
-1.
+2. **Source attribution may be ambiguous** — Multiple documents cover overlapping topics (e.g., both Niche and Google reviews mention advisors and registration). The system may retrieve chunks from the wrong source or mix sources in a single answer, making it hard for users to verify where the information came from.
 
-2.
+3. **Official documents vs. student opinions may conflict** — The Alamo Promise and Student Services documents describe things as they're supposed to work; student reviews describe reality. The system may retrieve both and produce a confusing or contradictory answer.
 
 ---
 
 ## Architecture
 
-<!-- Draw a diagram of your pipeline showing the five stages:
-     Document Ingestion → Chunking → Embedding + Vector Store → Retrieval → Generation
-     Label each stage with the tool or library you're using.
-     You can use ASCII art, a Mermaid diagram, or embed a sketch as an image.
-     You'll use this diagram as context when prompting AI tools to implement each stage. -->
+```mermaid
+flowchart LR
+    A[Document Ingestion\npathlib / open] --> B[Chunking\nCustom sliding window\n300 chars / 50 overlap]
+    B --> C[Embedding\nall-MiniLM-L6-v2\nsentence-transformers]
+    C --> D[Vector Store\nChromaDB]
+    D --> E[Retrieval\nSemantic Search\ntop-k = 4]
+    E --> F[Generation\nGroq\nllama-3.3-70b-versatile]
+    F --> G[Interface\nGradio]
+```
 
 ---
 
 ## AI Tool Plan
 
-<!-- For each part of the pipeline below, describe:
-     - Which AI tool you plan to use (Claude, Copilot, ChatGPT, etc.)
-     - What you'll give it as input (which sections of this planning.md, which requirements)
-     - What you expect it to produce
-     - How you'll verify the output matches your spec
-
-     "I'll use AI to help me code" is not a plan.
-     "I'll give Claude my Chunking Strategy section and ask it to implement chunk_text()
-     with my specified chunk size and overlap" is a plan. -->
-
 **Milestone 3 — Ingestion and chunking:**
+I'll give Claude my Chunking Strategy section and Documents table and ask it to implement a load_documents() function that reads all .txt files from the /docs folder and a chunk_text() function that splits text into 300-character chunks with 50-character overlap. I'll verify the output by printing 5 sample chunks and checking they are readable and self-contained.
 
 **Milestone 4 — Embedding and retrieval:**
+I'll give Claude my Retrieval Approach section and pipeline diagram and ask it to implement an embed_and_store() function using all-MiniLM-L6-v2 and ChromaDB, and a retrieve() function that returns the top 4 chunks with source metadata. I'll verify by running 3 test queries and checking that returned chunks are relevant and distance scores are below 0.5.
 
 **Milestone 5 — Generation and interface:**
+I'll give Claude my grounding requirement (answer only from retrieved context, cite sources) and ask it to implement a generate_response() function using Groq's llama-3.3-70b-versatile and a Gradio interface. I'll verify by checking that responses cite sources and that out-of-scope questions are refused rather than answered from general knowledge.
