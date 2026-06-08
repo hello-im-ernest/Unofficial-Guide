@@ -9,154 +9,95 @@
 
 ## Domain
 
-<!-- What topic or category of knowledge does your system cover?
-     Why is this knowledge valuable, and why is it hard to find through official channels?
-     Example: "Student reviews of CS professors at [university] — useful because official
-     course descriptions don't reflect teaching style, exam difficulty, or workload." -->
+The Unofficial St. Philip's College Survival Guide — real student knowledge about surviving and thriving at SPC that never appears in official handbooks or orientation packets. This includes honest professor reviews, financial aid tips, registration frustrations, campus safety concerns, and advice about programs like Alamo Promise. Official sources give the marketing version of college life; this system makes the real student experience searchable and answerable.
 
 ---
 
 ## Document Sources
 
-<!-- List every source you collected documents from.
-     Be specific: include URLs, subreddit names, forum thread titles, or file names.
-     Aim for variety — sources that together cover different subtopics or perspectives. -->
-
 | # | Source | Type | URL or file path |
 |---|--------|------|-----------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
-| 9 | | | |
-| 10 | | | |
+| 1 | Niche.com | Student reviews | https://www.niche.com/colleges/st-philip-s-college/reviews/ |
+| 2 | Niche.com Academics | Student reviews | docs/spc_niche_academics.txt |
+| 3 | RateMyProfessors | Professor reviews | docs/rmp_mccall.txt |
+| 4 | RateMyProfessors | Professor reviews | docs/rmp_rlopez.txt |
+| 5 | RateMyProfessors | Professor reviews | docs/rmp_slopez.txt |
+| 6 | Google Reviews | Student reviews | docs/spc_google_reviews.txt |
+| 7 | Alamo Colleges | Official program info | https://www.alamo.edu/promise/ |
+| 8 | SPC Official | Academic calendar | docs/spc_academic_calendar.txt |
+| 9 | SPC Official | Campus life | docs/spc_campus_life.txt |
+| 10 | SPC Official | Student services | docs/spc_student_services.txt |
 
 ---
 
 ## Chunking Strategy
 
-<!-- Describe your chunking approach with enough specificity that someone else could reproduce it.
-     Include:
-     - Chunk size (characters or tokens) and why that size fits your documents
-     - Overlap size and why (or why not) you used overlap
-     - Any preprocessing you did before chunking (e.g., stripping HTML, removing headers)
-     - What your final chunk count was across all documents -->
+**Chunk size:** 500 characters
 
-**Chunk size:**
+**Overlap:** 75 characters
 
-**Overlap:**
+**Why these choices fit your documents:** Most source documents are short student reviews — 2 to 5 sentences expressing a single opinion or experience. A 500-character chunk captures one or two complete reviews without merging unrelated opinions. Overlap of 75 characters ensures that reviews spanning a chunk boundary are not lost. We initially used 300-character chunks but increased to 500 after observing high distance scores in retrieval, indicating chunks were too small to embed meaningfully.
 
-**Why these choices fit your documents:**
-
-**Final chunk count:**
+**Final chunk count:** 133 chunks across 10 documents
 
 ---
 
 ## Embedding Model
 
-<!-- Name the embedding model you used and explain your choice.
-     Then answer: if you were deploying this system for real users and cost wasn't a constraint,
-     what tradeoffs would you weigh in choosing a different model?
-     Consider: context length limits, multilingual support, accuracy on domain-specific text,
-     latency, and local vs. API-hosted. -->
+**Model used:** all-MiniLM-L6-v2 via sentence-transformers (runs locally, no API key required)
 
-**Model used:**
-
-**Production tradeoff reflection:**
+**Production tradeoff reflection:** For a real deployment serving SPC students, I would consider OpenAI's text-embedding-3-small for higher accuracy on domain-specific text, but it costs money per API call and requires an internet connection. all-MiniLM-L6-v2 runs locally with no rate limits, which is ideal for a student project. Since St. Philip's serves a large Spanish-speaking population, a production system would benefit from a multilingual model like paraphrase-multilingual-MiniLM-L12-v2 to handle queries in Spanish. Context length is not a concern here since our chunks are short, but for longer documents a model with a larger context window would be needed.
 
 ---
 
 ## Grounded Generation
 
-<!-- Explain how your system enforces grounding — how does it prevent the LLM from answering
-     beyond the retrieved documents?
-     Describe both your system prompt (what instruction you gave the model) and any structural
-     choices (e.g., how you formatted the context, whether you filtered low-relevance chunks).
-     Do not just say "I told it to use the documents" — show the actual instruction or explain
-     the mechanism. -->
+**System prompt grounding instruction:** "You are a helpful student guide for St. Philip's College. Answer using only the information in the provided documents. Do not draw on outside knowledge. If the documents don't contain enough information to answer, say so explicitly. Always state which source document your answer comes from."
 
-**System prompt grounding instruction:**
-
-**How source attribution is surfaced in the response:**
+**How source attribution is surfaced in the response:** Retrieved chunks are passed to the model labeled as [Source 1 - filename], [Source 2 - filename], etc. The model is instructed to cite these labels in its response. Additionally, the unique source filenames are programmatically extracted from the retrieved chunks and displayed separately in the Sources field of the Gradio interface, independent of what the model writes.
 
 ---
 
 ## Evaluation Report
 
-<!-- Run your 5 test questions from planning.md through your system and record the results.
-     Be honest — a partially accurate or inaccurate result that you explain well is more
-     valuable than a suspiciously perfect result. -->
-
 | # | Question | Expected answer | System response (summarized) | Retrieval quality | Response accuracy |
 |---|----------|-----------------|------------------------------|-------------------|-------------------|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
-
-**Retrieval quality:** Relevant / Partially relevant / Off-target  
-**Response accuracy:** Accurate / Partially accurate / Inaccurate
+| 1 | What is the Alamo Promise and who is eligible? | Covers tuition gap for Bexar County high school seniors who enroll in fall after graduation and complete FAFSA/TASFA | Correctly described Alamo Promise as a tuition gap program, listed eligibility requirements, cited alamo_promise.txt | Relevant | Accurate |
+| 2 | What do students say about Professor McCall's class? | Easy exams, source code required, videos to follow, quick email responses | Correctly described easy exams, source code requirement, Programming II comparison, cited rmp_mccall.txt | Relevant | Accurate |
+| 3 | Is St. Philip's College safe at night? | Some students report feeling unsafe due to homeless individuals near campus at night | System said documents did not contain enough information about campus safety at night | Off-target | Partially accurate |
+| 4 | What student services are available at St. Philip's College? | Advising, tutoring (Math World, Learning and Writing Center), career services, disability support | Correctly listed Math World, Learning and Writing Center, advisors, MESA, online support options | Relevant | Accurate |
+| 5 | What do students say about the registration process? | Students report frustrating portal, hard to reach humans, ambiguous deadlines | System said documents did not mention the registration process | Off-target | Inaccurate |
 
 ---
 
 ## Failure Case Analysis
 
-<!-- Identify at least one question where retrieval or generation did not work as expected.
-     Write a specific explanation of *why* it failed, tied to a part of the pipeline.
+**Question that failed:** "What do students say about the registration process at St. Philip's College?"
 
-     "The answer was wrong" is not an explanation.
+**What the system returned:** "The provided documents do not contain enough information to answer the question about the registration process at St. Philip's College."
 
-     "The relevant information was split across a chunk boundary, so retrieval returned
-     only half the context — the model didn't have enough to answer correctly" is an explanation.
+**Root cause (tied to a specific pipeline stage):** This is a retrieval failure. The relevant content exists in spc_niche_reviews.txt — a student review describes the student portal as "extraordinarily frustrating" and mentions ambiguous deadlines and difficulty reaching humans. However, the chunk containing this review lost the semantic search to chunks from spc_niche_academics.txt, which dominated results with generic academic content. The 500-character chunk size caused the registration complaint to be embedded alongside unrelated content, diluting its semantic signal and preventing it from ranking highly for a registration-specific query.
 
-     "The embedding model treated the professor's nickname as out-of-vocabulary and returned
-     results from an unrelated review" is an explanation. -->
-
-**Question that failed:**
-
-**What the system returned:**
-
-**Root cause (tied to a specific pipeline stage):**
-
-**What you would change to fix it:**
+**What you would change to fix it:** Two fixes would help. First, clean spc_niche_reviews.txt to separate individual reviews into clearly labeled sections, so each chunk contains one focused review rather than fragments of multiple reviews. Second, add a dedicated document specifically about registration experiences — either by collecting more targeted reviews mentioning "registration" or "portal" or by writing a summary of common registration complaints from the source material.
 
 ---
 
 ## Spec Reflection
 
-<!-- Reflect on how planning.md shaped your implementation.
-     Answer both questions with at least 2–3 sentences each. -->
+**One way the spec helped you during implementation:** Writing the chunking strategy in planning.md before touching any code forced me to think through why 300 characters fit short reviews before discovering through testing that it didn't work well enough. Having the spec meant I had a clear baseline to compare against when retrieval results were poor — I knew exactly what I had intended and could reason about why it wasn't working rather than guessing blindly.
 
-**One way the spec helped you during implementation:**
-
-**One way your implementation diverged from the spec, and why:**
+**One way your implementation diverged from the spec, and why:** The spec specified 300-character chunks with 50-character overlap, but during testing the distance scores were consistently high (above 0.85), indicating weak matches. I increased chunk size to 500 characters with 75-character overlap after observing that short chunks were embedding too vaguely to distinguish between different topics. The spec was updated to reflect this change.
 
 ---
 
 ## AI Usage
 
-<!-- Describe at least 2 specific instances where you used an AI tool during this project.
-     For each: what did you give the AI as input, what did it produce, and what did you
-     change, override, or direct differently?
-
-     "I used Claude to help me code" is not sufficient.
-     "I gave Claude my Chunking Strategy section from planning.md and asked it to implement
-     chunk_text(). It returned a function using a fixed character split. I overrode the
-     chunk size from 500 to 200 because my documents are short reviews, not long guides." -->
-
 **Instance 1**
-
-- *What I gave the AI:*
-- *What it produced:*
-- *What I changed or overrode:*
+- *What I gave the AI:* My Chunking Strategy and Documents sections from planning.md, plus the requirement to load .txt files from a /docs folder
+- *What it produced:* A complete ingest.py with load_documents() and chunk_text() functions using a sliding window approach with the specified chunk size and overlap
+- *What I changed or overrode:* I increased CHUNK_SIZE from 300 to 500 and OVERLAP from 50 to 75 after testing showed the original values produced chunks too small to embed meaningfully
 
 **Instance 2**
-
-- *What I gave the AI:*
-- *What it produced:*
-- *What I changed or overrode:*
+- *What I gave the AI:* My Retrieval Approach section from planning.md and the requirement to use ChromaDB and all-MiniLM-L6-v2
+- *What it produced:* A complete retriever.py with embed_and_store() and retrieve() functions using ChromaDB's PersistentClient and sentence-transformers
+- *What I changed or overrode:* I increased TOP_K from 4 to 6 after observing that relevant chunks were not appearing in the top 4 results for some queries
